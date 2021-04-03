@@ -1,14 +1,19 @@
 FROM alpine:latest
 
-RUN apk add --no-cache --update \
-    samba-common-tools \
-    samba-client \
-    samba-server \
-    tini
+# upgrade base system and install samba and supervisord
+RUN apk --no-cache upgrade && apk --no-cache add samba samba-common-tools supervisor
 
-COPY smb.conf /etc/samba/smb.conf
+# create a dir for the config and the share
+RUN mkdir /config /Shared
 
-EXPOSE 445/tcp
+# copy config files from project folder to get a default config going for samba and supervisord
+COPY *.conf /config/
 
-ENTRYPOINT ["/sbin/tini" , "--", "smbd --foreground --log-stdout"]
+# volume mappings
+VOLUME /config /shared
 
+# exposes samba's default ports (135 for End Point Mapper [DCE/RPC Locator Service],
+# 137, 138 for nmbd and 139, 445 for smbd)
+EXPOSE 135/tcp 137/udp 138/udp 139/tcp 445/tcp
+
+ENTRYPOINT ["supervisord", "-c", "/config/supervisord.conf"]
